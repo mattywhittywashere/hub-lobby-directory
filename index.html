@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Hub Directory</title>
+<link href="https://fonts.googleapis.com/css?family=Oswald:500,600|Montserrat:700|Open+Sans:400" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0d0d0f; overflow: hidden; }
+  /* Fixed 1920x1080 board, scaled to fit any screen */
+  #board {
+    position: absolute; left: 0; top: 0;
+    width: 1920px; height: 1080px;
+    background: #0d0d0f;
+    -webkit-transform-origin: 0 0; transform-origin: 0 0;
+    font-family: 'Montserrat', 'Arial Black', Arial, sans-serif;
+  }
+  .top {
+    height: 140px; position: relative; color: #fff;
+    font-family: 'Oswald', 'Arial Narrow', Arial, sans-serif;
+  }
+  .addr {
+    position: absolute; left: 70px; top: 30px; width: 340px;
+    text-align: center; font-weight: 600; font-size: 40px; line-height: 46px;
+  }
+  .title {
+    position: absolute; left: 0; right: 0; top: 18px; text-align: center;
+    font-weight: 600; font-size: 104px; line-height: 110px; letter-spacing: 1px;
+  }
+  .ranges {
+    position: absolute; right: 70px; top: 34px;
+    font-weight: 500; font-size: 32px; line-height: 40px;
+  }
+  .ranges span { display: inline-block; width: 300px; }
+  .ranges span.last { width: auto; }
+  .panel {
+    position: absolute; left: 0; right: 0; top: 140px; bottom: 0;
+    background: #f7f8fa; padding: 14px 20px 0 20px;
+  }
+  .col {
+    float: left; width: 25%; box-sizing: border-box; padding: 0 14px;
+    border-left: 3px dashed #222; height: 910px;
+  }
+  .col.first { border-left: none; }
+  .bar {
+    background: #0d0d0f; color: #fff; height: 58px; line-height: 58px;
+    text-align: center; font-family: 'Open Sans', Arial, sans-serif;
+    font-size: 42px; letter-spacing: 2px;
+  }
+  .head, .row { position: relative; height: 40px; line-height: 40px; }
+  .head { height: 32px; line-height: 32px; font-family: 'Open Sans', Arial, sans-serif; font-size: 22px; color: #333; }
+  .row { font-size: 21px; color: #111; }
+  .name { display: inline-block; position: absolute; left: 6px; right: 128px; white-space: nowrap; }
+  .suite, .level { position: absolute; top: 0; text-align: center; width: 60px; }
+  .suite { right: 66px; }
+  .level { right: 0; }
+  .level.word { font-size: 17px; width: 70px; right: -4px; }
+  .row.bm { border-top: 3px solid #222; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="board">
+  <div class="top">
+    <div class="addr">89 - 97<br>JONES STREET</div>
+    <div class="title">THE HUB</div>
+    <div class="ranges">
+      <span>L1 Suites 1 - 19</span><span class="last">L3 Suites 41 - 63</span><br>
+      <span>L2 Suites 22 - 40</span><span class="last">L4 Suites 64 - 86</span>
+    </div>
+  </div>
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+// Written in plain old JavaScript (ES5) so it runs on the board's Android 5 browser.
+var SHEET_ID = "1fuMBqruxY4zv33AvAEKnwubOJnAqiOpwQubOgJDv4N8";
+var REFRESH_MINUTES = 5;
+var TENANTS = [], FOOTER = [];
+var COLS = 4;
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function render(){
+  var per = Math.ceil(TENANTS.length / COLS), html = "", c, i;
+  for (c = 0; c < COLS; c++) {
+    var list = TENANTS.slice(c * per, (c + 1) * per);
+    if (!list.length) continue;
+    var from = list[0][0].charAt(0).toUpperCase();
+    var to = list[list.length - 1][0].charAt(0).toUpperCase();
+    if (c === 0) from = "A";
+    if (c === COLS - 1) to = "Z"; // first column starts at A and last ends at Z, like the current board
+    html += '<div class="col' + (c === 0 ? ' first' : '') + '">';
+    html += '<div class="bar">' + from + ' - ' + to + '</div>';
+    html += '<div class="head"><span class="suite">Suite</span><span class="level">Level</span></div>';
+    for (i = 0; i < list.length; i++) html += row(list[i], "");
+    if (c === COLS - 1) for (i = 0; i < FOOTER.length; i++) html += row(FOOTER[i], i === 0 ? " bm" : "");
+    html += '</div>';
+  }
+  document.getElementById("panel").innerHTML = html;
+}
+function row(t, extra){
+  var word = isNaN(parseInt(t[2], 10)) ? " word" : "";
+  return '<div class="row' + extra + '"><span class="name">' + esc(t[0]) +
+    '</span><span class="suite">' + esc(t[1]) + '</span><span class="level' + word + '">' + esc(t[2]) + '</span></div>';
+}
+// Shrink any name that is too long for its column, so nothing gets cut off
+function shrinkNames(){
+  var spans = document.getElementById("panel").getElementsByTagName("span"), i, el, size, room;
+  for (i = 0; i < spans.length; i++) {
+    el = spans[i];
+    if (el.className !== "name") continue;
+    room = el.parentNode.offsetWidth - 150;
+    size = 21;
+    el.style.fontSize = "";
+    el.style.position = "static";
+    while (el.offsetWidth > room && size > 13) { size--; el.style.fontSize = size + "px"; }
+    el.style.position = "";
+  }
+}
+function fit(){
+  var b = document.getElementById("board");
+  var w = window.innerWidth || document.documentElement.clientWidth;
+  var h = window.innerHeight || document.documentElement.clientHeight;
+  var s = Math.min(w / 1920, h / 1080);
+  var x = (w - 1920 * s) / 2, y = (h - 1080 * s) / 2;
+  var t = "translate(" + x + "px," + y + "px) scale(" + s + ")";
+  b.style.webkitTransform = t; b.style.transform = t;
+}
+// ---- Load the directory from the Google Sheet ----
+// Uses a <script> tag (JSONP) because it works on very old browsers.
+function hubData(resp){
+  if (!resp || resp.status !== "ok" || !resp.table) return;
+  var rows = resp.table.rows, main = [], bottom = [], i, c, name, suite, level, pin;
+  for (i = 0; i < rows.length; i++) {
+    c = rows[i].c || [];
+    name = cell(c[0]); suite = cell(c[1]); level = cell(c[2]); pin = cell(c[3]).toLowerCase();
+    if (!name) continue;
+    if (pin === "yes" || pin === "y") bottom.push([name, suite, level]);
+    else main.push([name, suite, level]);
+  }
+  if (!main.length) return; // never blank the board on a bad read
+  main.sort(function(a, b){ var x = a[0].toLowerCase(), y = b[0].toLowerCase(); return x < y ? -1 : x > y ? 1 : 0; });
+  TENANTS = main; FOOTER = bottom;
+  try { localStorage.setItem("hubDirectory", JSON.stringify([main, bottom])); } catch (e) {}
+  draw();
+}
+function cell(x){ return (x && x.v !== null && x.v !== undefined) ? String(x.v).replace(/^\s+|\s+$/g, "") : ""; }
+function load(){
+  var old = document.getElementById("feed");
+  if (old) old.parentNode.removeChild(old);
+  var s = document.createElement("script");
+  s.id = "feed";
+  s.src = "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
+    "/gviz/tq?tqx=responseHandler:hubData&sheet=Directory&headers=1&t=" + new Date().getTime();
+  document.getElementsByTagName("head")[0].appendChild(s);
+}
+function draw(){ render(); shrinkNames(); fit(); }
+
+// Show the last good copy straight away (survives a reboot with no internet)
+try { var saved = JSON.parse(localStorage.getItem("hubDirectory")); if (saved) { TENANTS = saved[0]; FOOTER = saved[1]; } } catch (e) {}
+if (TENANTS.length) draw(); else fit();
+load();
+setInterval(load, REFRESH_MINUTES * 60 * 1000);
+window.onload = shrinkNames;
+setTimeout(shrinkNames, 3000);
+window.onresize = fit;
+</script>
+</body>
+</html>

@@ -164,6 +164,16 @@ setInterval(load, REFRESH_MINUTES * 60 * 1000);
 window.onload = shrinkNames;
 setTimeout(shrinkNames, 3000);
 window.onresize = fit;
+
+// Tap anywhere to go full screen (until the kiosk app takes over)
+function goFull(){
+  var d = document.documentElement;
+  var f = d.requestFullscreen || d.webkitRequestFullscreen || d.webkitRequestFullScreen;
+  if (f) { try { f.call(d); } catch (e) {} }
+  setTimeout(fit, 500);
+}
+document.addEventListener("click", goFull, false);
+document.addEventListener("touchend", goFull, false);
 </script>
 </body>
 </html>
